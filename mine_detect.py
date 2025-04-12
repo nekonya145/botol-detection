@@ -24,6 +24,7 @@ if not os.path.exists(args.model):
 
 model = YOLO(args.model, task='detect')
 labels = model.names
+img = np.full((720, 1280, 3), (255,255,255), dtype=np.uint8)  # Buat BG Putih
 
 # Fungsi untuk hitung mundur
 def countdown():
@@ -32,24 +33,41 @@ def countdown():
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     for i in range(3, 0, -1):  # Countdown dari 3 ke 1
-        img = np.full((720, 1280, 3), (255,255,255), dtype=np.uint8)  # Buat background hitam (sesuai resolusi layar)
+        img[:] = (217, 149, 41)
         text = str(i)
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 10
-        font_thickness = 10
+        font_thickness = 20
         text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
         text_x = (img.shape[1] - text_size[0]) // 2
         text_y = (img.shape[0] + text_size[1]) // 2
 
-        cv2.putText(img, text, (text_x, text_y), font, font_scale, (0, 255, 0), font_thickness)
-        cv2.imshow(window_name, img)
-        cv2.waitKey(2000)  # Tunggu 1 detik
-
-    cv2.destroyWindow(window_name)  # Tutup window setelah countdown selesai
+        cv2.putText(img, text, (text_x, text_y), font, font_scale, (194, 220, 242), font_thickness)
+        cv2.imshow("Countdown", img)
+        cv2.waitKey(1000)  # Tunggu 2 detik
 
 # Fungsi untuk mengambil gambar dari sumber
 def capture_image():
     countdown()
+
+    window_name = "Mengambil Gambar"
+    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    text = str("Sedang Mengambil Gambar")
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 3
+    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+    img[:] = (194, 190, 202)
+    text_x = (img.shape[1] - text_size[0]) // 2
+    text_y = (img.shape[0] + text_size[1]) // 2
+
+    cv2.putText(img, text, (text_x, text_y), font, font_scale, (140, 118, 20), font_thickness)
+    cv2.imshow("Mengambil Gambar", img)
+    cv2.waitKey(1000)
+    cv2.destroyWindow("Countdown")  # Tutup window setelah countdown selesai
+    cv2.waitKey(3000)  # Tunggu 2 detik
+    cv2.destroyWindow("Mengambil Gambar")
 
     if args.source.startswith('usb') or args.source.startswith('picamera'):
         cam_index = int(args.source.replace('usb', '').replace('picamera', ''))
@@ -175,7 +193,7 @@ def main_second():
     if jumlah_botol_plastik != 0 or jumlah_botol_kaca != 0:
         send_data(jumlah_botol_plastik, jumlah_botol_kaca)
 
-    print('Data Telah terkirim.')
+    print('Secondary Function Telah Berjalan.')
     main()
 
 def main():
