@@ -7,6 +7,8 @@ import uuid
 import argparse
 import time
 from ultralytics import YOLO
+import qrcode
+from PIL import Image
 
 # Argument Parser
 parser = argparse.ArgumentParser()
@@ -44,7 +46,7 @@ def countdown():
 
         cv2.putText(img, text, (text_x, text_y), font, font_scale, (194, 220, 242), font_thickness)
         cv2.imshow("Countdown", img)
-        cv2.waitKey(1000)  # Tunggu 2 detik
+        cv2.waitKey(1000)
 
 # Fungsi untuk mengambil gambar dari sumber
 def capture_image():
@@ -61,13 +63,11 @@ def capture_image():
     img[:] = (194, 190, 202)
     text_x = (img.shape[1] - text_size[0]) // 2
     text_y = (img.shape[0] + text_size[1]) // 2
-
     cv2.putText(img, text, (text_x, text_y), font, font_scale, (140, 118, 20), font_thickness)
+    
     cv2.imshow("Mengambil Gambar", img)
     cv2.waitKey(1000)
     cv2.destroyWindow("Countdown")  # Tutup window setelah countdown selesai
-    cv2.waitKey(3000)  # Tunggu 2 detik
-    cv2.destroyWindow("Mengambil Gambar")
 
     if args.source.startswith('usb') or args.source.startswith('picamera'):
         cam_index = int(args.source.replace('usb', '').replace('picamera', ''))
@@ -140,8 +140,8 @@ def detect_objects(frame):
     cv2.namedWindow("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
     cv2.imshow("Hasil Deteksi", frame)
-    cv2.waitKey(2000)
-    cv2.destroyWindow("Hasil Deteksi")
+    cv2.waitKey(1000)
+    cv2.destroyWindow("Mengambil Gambar")
 
     return jumlah_botol_plastik, jumlah_botol_kaca
 
@@ -180,6 +180,56 @@ def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
             print(f'Gagal mengirim data. Status code: {response.status_code}', response.text)
     except Exception as e:
         print('Error saat mengirim data:', e)
+    
+    # --- TAMPILKAN QR + TULISAN ---
+    cv2.namedWindow("QR Token Display", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("QR Token Display", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    # Buat background kosong
+    img = np.full((720, 1280, 3), (194, 190, 202), dtype=np.uint8)
+
+    # Generate QR Code menggunakan PIL
+    qr = qrcode.QRCode(box_size=10, border=2)
+    qr.add_data(token)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    # Konversi PIL -> OpenCV (np.array)
+    qr_img = np.array(qr_img)
+    qr_img = cv2.cvtColor(qr_img, cv2.COLOR_RGB2BGR)
+    qr_img = cv2.resize(qr_img, (300, 300))
+
+    # Tempelkan QR ke tengah layar
+    x_offset = img.shape[1]//2 - qr_img.shape[1]//2
+    y_offset = img.shape[0]//2 - qr_img.shape[0]//2 - 100
+    img[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
+
+    # Tampilkan informasi di bawah QR
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    warna_teks = (0, 0, 0)
+
+    texts = [
+        f"Total Plastik = {jumlah_botol_plastik} pcs",
+        f"Total Kaca    = {jumlah_botol_kaca} pcs",
+        f"Anda mendapatkan sebanyak {jumlah_point_transaksi} pts"
+    ]
+
+    for i, line in enumerate(texts):
+        text_size = cv2.getTextSize(line, font, font_scale, font_thickness)[0]
+        text_x = (img.shape[1] - text_size[0]) // 2
+        text_y = y_offset + qr_img.shape[0] + 50 + (i * 40)
+        cv2.putText(img, line, (text_x, text_y), font, font_scale, warna_teks, font_thickness)
+
+    cv2.imshow("QR Token Display", img)
+    cv2.waitKey(1000)
+    cv2.destroyWindow("Hasil Deteksi")
+    while True:
+        key = cv2.waitKey(1)
+        if key == ord('l'):
+            break
+    cv2.destroyWindow("QR Token Display")
 
 # Fungsi utama
 def main_second():
