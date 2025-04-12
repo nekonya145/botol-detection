@@ -190,7 +190,8 @@ def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
 
     # Generate QR Code menggunakan PIL
     qr = qrcode.QRCode(box_size=10, border=2)
-    qr.add_data(token)
+    link = "https://daur-uang.my.id/scan-token/" + token
+    qr.add_data(link)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
@@ -213,7 +214,9 @@ def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
     texts = [
         f"Total Plastik = {jumlah_botol_plastik} pcs",
         f"Total Kaca    = {jumlah_botol_kaca} pcs",
-        f"Anda mendapatkan sebanyak {jumlah_point_transaksi} pts"
+        f"Anda mendapatkan sebanyak {jumlah_point_transaksi} pts",
+        f"",
+        f"Token Anda adalah {token}"
     ]
 
     for i, line in enumerate(texts):
