@@ -140,7 +140,7 @@ def detect_objects(frame):
     cv2.namedWindow("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
     cv2.imshow("Hasil Deteksi", frame)
-    cv2.waitKey(1000)
+    cv2.waitKey(3000)
     cv2.destroyWindow("Mengambil Gambar")
 
     return jumlah_botol_plastik, jumlah_botol_kaca
