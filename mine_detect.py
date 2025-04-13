@@ -245,6 +245,9 @@ def main_second():
 
     if jumlah_botol_plastik != 0 or jumlah_botol_kaca != 0:
         send_data(jumlah_botol_plastik, jumlah_botol_kaca)
+    elif jumlah_botol_kaca == 0 and jumlah_botol_plastik == 0:
+        cv2.waitKey(1000)
+        cv2.destroyWindow("Hasil Deteksi")
 
     print('Secondary Function Telah Berjalan.')
     main()
