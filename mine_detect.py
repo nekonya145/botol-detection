@@ -8,7 +8,6 @@ import argparse
 import time
 from ultralytics import YOLO
 import qrcode
-from PIL import Image
 
 # Argument Parser
 parser = argparse.ArgumentParser()
@@ -26,48 +25,39 @@ if not os.path.exists(args.model):
 
 model = YOLO(args.model, task='detect')
 labels = model.names
-img = np.full((720, 1280, 3), (255,255,255), dtype=np.uint8)  # Buat BG Putih
+img = np.full((720, 1280, 3), (255,255,255), dtype=np.uint8)  # Background putih default
 
-# Fungsi untuk hitung mundur
-def countdown():
-    window_name = "Countdown"
-    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+# Satu window utama
+WINDOW_NAME = "MainBotolDetection"
+cv2.namedWindow(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    for i in range(3, 0, -1):  # Countdown dari 3 ke 1
-        img[:] = (217, 149, 41)
-        text = str(i)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 10
-        font_thickness = 20
-        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-        text_x = (img.shape[1] - text_size[0]) // 2
-        text_y = (img.shape[0] + text_size[1]) // 2
+# Fungsi tampilan frame fullscreen
+def show_fullscreen_frame(frame, delay=1000):
+    cv2.imshow(WINDOW_NAME, frame)
+    cv2.waitKey(delay)
 
-        cv2.putText(img, text, (text_x, text_y), font, font_scale, (194, 220, 242), font_thickness)
-        cv2.imshow("Countdown", img)
-        cv2.waitKey(1000)
-
-# Fungsi untuk mengambil gambar dari sumber
-def capture_image():
-    countdown()
-
-    window_name = "Mengambil Gambar"
-    cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    text = str("Sedang Mengambil Gambar")
+# Fungsi tampilan teks di tengah layar
+def show_text_screen(text, bg_color=(217, 149, 41), font_color=(194, 220, 242),
+                     font_scale=5, thickness=10, delay=1000):
+    img[:] = bg_color
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 1
-    font_thickness = 3
-    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-    img[:] = (194, 190, 202)
+    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
     text_x = (img.shape[1] - text_size[0]) // 2
     text_y = (img.shape[0] + text_size[1]) // 2
-    cv2.putText(img, text, (text_x, text_y), font, font_scale, (140, 118, 20), font_thickness)
-    
-    cv2.imshow("Mengambil Gambar", img)
-    cv2.waitKey(1000)
-    cv2.destroyWindow("Countdown")  # Tutup window setelah countdown selesai
+    cv2.putText(img, text, (text_x, text_y), font, font_scale, font_color, thickness)
+    show_fullscreen_frame(img, delay)
+
+# Countdown tampilan
+def countdown():
+    for i in range(3, 0, -1):
+        show_text_screen(str(i), bg_color=(217, 149, 41), font_color=(194, 220, 242), font_scale=10, thickness=20, delay=1000)
+
+# Ambil gambar dari sumber
+def capture_image():
+    countdown()
+    show_text_screen("Sedang Mengambil Gambar", bg_color=(194, 190, 202), font_color=(140, 118, 20),
+                     font_scale=1, thickness=3, delay=1000)
 
     if args.source.startswith('usb') or args.source.startswith('picamera'):
         cam_index = int(args.source.replace('usb', '').replace('picamera', ''))
@@ -107,8 +97,8 @@ def capture_image():
     else:
         print('ERROR: Sumber gambar tidak valid.')
         sys.exit(0)
-   
-# Fungsi untuk mendeteksi objek dan menghitung jumlah botol plastik dan kaca
+
+# Deteksi objek
 def detect_objects(frame):
     results = model(frame, verbose=False)
     detections = results[0].boxes
@@ -129,25 +119,19 @@ def detect_objects(frame):
                 jumlah_botol_kaca += 1
 
             # Gambar bounding box dan label
-            bbox_colors = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106), (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
+            bbox_colors = [(164,120,87), (68,148,228), (93,97,209), (178,182,133), (88,159,106),
+                           (96,202,231), (159,124,168), (169,162,241), (98,118,150), (172,176,184)]
             color = bbox_colors[classidx % 10]
             label_text = f'{classname}: {int(conf*100)}%'
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-    # Simpan dan tampikan hasil deteksi
     cv2.imwrite('capture.png', frame)
-    cv2.namedWindow("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("Hasil Deteksi", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    cv2.imshow("Hasil Deteksi", frame)
-    cv2.waitKey(3000)
-    cv2.destroyWindow("Mengambil Gambar")
-
+    show_fullscreen_frame(frame, delay=3000)
     return jumlah_botol_plastik, jumlah_botol_kaca
 
-# Fungsi untuk mengirim data ke API
+# Kirim data ke API dan tampilkan QR
 def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
-    # URL API endpoint
     url = 'https://daur-uang.my.id/api/points'
     response = requests.get(url)
     data = response.json()
@@ -180,32 +164,22 @@ def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
             print(f'Gagal mengirim data. Status code: {response.status_code}', response.text)
     except Exception as e:
         print('Error saat mengirim data:', e)
-    
-    # --- TAMPILKAN QR + TULISAN ---
-    cv2.namedWindow("QR Token Display", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("QR Token Display", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    # Buat background kosong
-    img = np.full((720, 1280, 3), (194, 190, 202), dtype=np.uint8)
-
-    # Generate QR Code menggunakan PIL
+    # Tampilkan QR + info
+    img[:] = (194, 190, 202)
     qr = qrcode.QRCode(box_size=10, border=2)
     link = "https://daur-uang.my.id/scan-token/" + token
     qr.add_data(link)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
-    # Konversi PIL -> OpenCV (np.array)
     qr_img = np.array(qr_img)
     qr_img = cv2.cvtColor(qr_img, cv2.COLOR_RGB2BGR)
     qr_img = cv2.resize(qr_img, (300, 300))
 
-    # Tempelkan QR ke tengah layar
     x_offset = img.shape[1]//2 - qr_img.shape[1]//2
     y_offset = img.shape[0]//2 - qr_img.shape[0]//2 - 100
     img[y_offset:y_offset+qr_img.shape[0], x_offset:x_offset+qr_img.shape[1]] = qr_img
 
-    # Tampilkan informasi di bawah QR
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 1
     font_thickness = 2
@@ -225,60 +199,53 @@ def send_data(jumlah_botol_plastik, jumlah_botol_kaca):
         text_y = y_offset + qr_img.shape[0] + 50 + (i * 40)
         cv2.putText(img, line, (text_x, text_y), font, font_scale, warna_teks, font_thickness)
 
-    cv2.imshow("QR Token Display", img)
-    cv2.waitKey(1000)
-    cv2.destroyWindow("Hasil Deteksi")
+    show_fullscreen_frame(img, delay=1000)
     while True:
         key = cv2.waitKey(1)
         if key == ord('l'):
             break
-    cv2.destroyWindow("QR Token Display")
 
-# Fungsi utama
+# Fungsi utama kedua
 def main_second():
     frame = capture_image()
     if user_res:
-        resize = True
-        resW, resH = int(user_res.split('x')[0]), int(user_res.split('x')[1])
-        frame = cv2.resize(frame,(resW,resH))
+        resW, resH = map(int, user_res.split('x'))
+        frame = cv2.resize(frame, (resW, resH))
     jumlah_botol_plastik, jumlah_botol_kaca = detect_objects(frame)
 
     if jumlah_botol_plastik != 0 or jumlah_botol_kaca != 0:
         send_data(jumlah_botol_plastik, jumlah_botol_kaca)
-    elif jumlah_botol_kaca == 0 and jumlah_botol_plastik == 0:
+    else:
         cv2.waitKey(1000)
-        cv2.destroyWindow("Hasil Deteksi")
 
     print('Secondary Function Telah Berjalan.')
     main()
 
+# Fungsi utama
 def main():
-    # Buka video dalam mode fullscreen
     video_path = "vid/main.mp4"
     waitingroom = cv2.VideoCapture(video_path)
-    cv2.namedWindow("WaitingRoom", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("WaitingRoom", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    # Ambil FPS dari video dan hitung delay yang sesuai
     fps = waitingroom.get(cv2.CAP_PROP_FPS)
-    delay = int(1000 / fps) if fps > 0 else 30  # Default delay jika FPS tidak terdeteksi
+    delay = int(1000 / fps) if fps > 0 else 30
 
     while waitingroom.isOpened():
         ret, frame = waitingroom.read()
         if not ret:
-            waitingroom.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Ulangi video jika selesai
+            waitingroom.set(cv2.CAP_PROP_POS_FRAMES, 0)
             continue
 
-        cv2.imshow("WaitingRoom", frame)
+        cv2.imshow(WINDOW_NAME, frame)
         key = cv2.waitKey(delay) & 0xFF
-        if key == ord('p'):  # Trigger ketika 'p' ditekan
+        if key == ord('p'):
             waitingroom.release()
             time.sleep(0.1)
             main_second()
             break
+        if key == ord('q'):
+            break
 
-        if key == ord('q'):  # Keluar jika 'q' ditekan
-            break  
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
